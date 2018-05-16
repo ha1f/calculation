@@ -13,6 +13,19 @@ enum InfixOperator {
     case minus
     case divide
     case multiply
+    
+    var regex: String {
+        switch self {
+        case .plus:
+            return "\\+"
+        case .minus:
+            return "-"
+        case .divide:
+            return "/"
+        case .multiply:
+            return "\\*"
+        }
+    }
 }
 
 enum ExpressionError: Error {
@@ -23,10 +36,7 @@ enum ExpressionError: Error {
 
 indirect enum Expression {
     case value(Double)
-    case plus(Expression, Expression)
-    case minus(Expression, Expression)
-    case divide(Expression, Expression)
-    case multiply(Expression, Expression)
+    case statement(InfixOperator, Expression, Expression)
 }
 
 extension Expression {
@@ -36,14 +46,17 @@ extension Expression {
         switch self {
         case .value(let value):
             return value
-        case .plus(let e1, let e2):
-            return e1.calculateResult() + e2.calculateResult()
-        case .minus(let e1, let e2):
-            return e1.calculateResult() - e2.calculateResult()
-        case .divide(let e1, let e2):
-            return e1.calculateResult() / e2.calculateResult()
-        case .multiply(let e1, let e2):
-            return e1.calculateResult() * e2.calculateResult()
+        case .statement(let op, let e1, let e2):
+            switch op {
+            case .plus:
+                return e1.calculateResult() + e2.calculateResult()
+            case .minus:
+                return e1.calculateResult() - e2.calculateResult()
+            case .divide:
+                return e1.calculateResult() / e2.calculateResult()
+            case .multiply:
+                return e1.calculateResult() * e2.calculateResult()
+            }
         }
     }
 }
@@ -87,9 +100,9 @@ extension Expression {
         }
         let e2 = try _parse2(right)
         if op == "*" {
-            return Expression.multiply(e1, e2)
+            return Expression.statement(.multiply, e1, e2)
         } else if op == "/" {
-            return Expression.divide(e1, e2)
+            return Expression.statement(.divide, e1, e2)
         }
         
         // 正規表現からありえない
@@ -110,9 +123,9 @@ extension Expression {
         
         let e2 = try parse(right)
         if op == "+" {
-            return Expression.plus(e1, e2)
+            return Expression.statement(.plus, e1, e2)
         } else if op == "-" {
-            return Expression.minus(e1, e2)
+            return Expression.statement(.minus, e1, e2)
         }
         
         // 正規表現からありえない
