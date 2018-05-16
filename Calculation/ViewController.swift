@@ -8,22 +8,38 @@
 
 import UIKit
 
-enum InfixOperator {
-    case plus
-    case minus
-    case divide
-    case multiply
+enum InfixOperator: String {
+    case plus = "+"
+    case minus = "-"
+    case divide = "/"
+    case multiply = "*"
+    
+    static let operators1 = "[\(InfixOperator.plus.regex)\(InfixOperator.minus.regex)]"
+    static let operators2 = "[\(InfixOperator.multiply.regex)\(InfixOperator.divide.regex)]"
     
     var regex: String {
         switch self {
         case .plus:
-            return "\\+"
+            return "\\\(rawValue)"
         case .minus:
-            return "-"
+            return rawValue
         case .divide:
-            return "/"
+            return rawValue
         case .multiply:
-            return "\\*"
+            return "\\\(rawValue)"
+        }
+    }
+    
+    func calculate(_ lhs: Double, _ rhs: Double) -> Double {
+        switch self {
+        case .plus:
+            return lhs + rhs
+        case .minus:
+            return lhs - rhs
+        case .divide:
+            return lhs / rhs
+        case .multiply:
+            return lhs * rhs
         }
     }
 }
@@ -47,16 +63,7 @@ extension Expression {
         case .value(let value):
             return value
         case .statement(let op, let e1, let e2):
-            switch op {
-            case .plus:
-                return e1.calculateResult() + e2.calculateResult()
-            case .minus:
-                return e1.calculateResult() - e2.calculateResult()
-            case .divide:
-                return e1.calculateResult() / e2.calculateResult()
-            case .multiply:
-                return e1.calculateResult() * e2.calculateResult()
-            }
+            return op.calculate(e1.calculateResult(), e2.calculateResult())
         }
     }
 }
@@ -89,7 +96,7 @@ extension Expression {
     
     private static func _parse2(_ string: String) throws -> Expression {
         let exp1i = exp1Pattern.ignoringExtractions()
-        let regex = try! Regex("^(\(exp1i))(?:([\\*/])(.+))?$")
+        let regex = try! Regex("^(\(exp1i))(?:(\(InfixOperator.operators2))(.+))?$")
         guard let match = regex.firstMatch(string) else {
             throw ExpressionError.unknown
         }
@@ -99,10 +106,8 @@ extension Expression {
             return e1
         }
         let e2 = try _parse2(right)
-        if op == "*" {
-            return Expression.statement(.multiply, e1, e2)
-        } else if op == "/" {
-            return Expression.statement(.divide, e1, e2)
+        if let unwrappedOp = InfixOperator(rawValue: op) {
+            return Expression.statement(unwrappedOp, e1, e2)
         }
         
         // 正規表現からありえない
@@ -111,7 +116,7 @@ extension Expression {
     
     static func parse(_ string: String) throws -> Expression {
         let exp2i = exp2Pattern.ignoringExtractions()
-        let regex = try! Regex("^(\(exp2i))(?:([\\+-])(.+))?$")
+        let regex = try! Regex("^(\(exp2i))(?:(\(InfixOperator.operators1))(.+))?$")
         guard let match = regex.firstMatch(string) else {
             throw ExpressionError.invalidInput
         }
@@ -122,10 +127,8 @@ extension Expression {
         }
         
         let e2 = try parse(right)
-        if op == "+" {
-            return Expression.statement(.plus, e1, e2)
-        } else if op == "-" {
-            return Expression.statement(.minus, e1, e2)
+        if let unwrappedOp = InfixOperator(rawValue: op) {
+            return Expression.statement(unwrappedOp, e1, e2)
         }
         
         // 正規表現からありえない
@@ -137,6 +140,7 @@ extension Expression {
 class ViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
+        // 13
         print(try! Expression.parse("(1+(1+2))*3+4-3").calculateResult())
     }
 }
