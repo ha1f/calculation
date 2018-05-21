@@ -13,9 +13,11 @@ enum InfixOperator: String {
     case minus = "-"
     case divide = "/"
     case multiply = "*"
+    case power = "^"
     
     static let operators1 = "[\(InfixOperator.plus.regex)\(InfixOperator.minus.regex)]"
     static let operators2 = "[\(InfixOperator.multiply.regex)\(InfixOperator.divide.regex)]"
+    static let operators3 = "[\(InfixOperator.power.regex)]"
     
     var regex: String {
         switch self {
@@ -27,6 +29,8 @@ enum InfixOperator: String {
             return rawValue
         case .multiply:
             return "\\\(rawValue)"
+        case .power:
+            return "\\^"
         }
     }
     
@@ -40,6 +44,8 @@ enum InfixOperator: String {
             return lhs / rhs
         case .multiply:
             return lhs * rhs
+        case .power:
+            return pow(lhs, rhs)
         }
     }
 }
@@ -73,11 +79,12 @@ extension Expression {
     
     private static let floatPattern = "[0-9]+(?:\\.[0-9]+)?"
     private static let blockPattern = "[(\\[](.+)[)\\]]"
-    private static let exp1Pattern = "(?:\(blockPattern)|(\(floatPattern)))"
-    private static let exp2Pattern = "\(exp1Pattern)(?:([*/])\(exp1Pattern))*"
-    private static let exp3Pattern = "\(exp2Pattern)(?:([\\+-])\(exp2Pattern))*"
+    private static let exp4Pattern = "(?:\(blockPattern)|(\(floatPattern)))"
+    private static let exp3Pattern = "\(exp4Pattern)(?:(\(InfixOperator.operators3))\(exp4Pattern))*"
+    private static let exp2Pattern = "\(exp3Pattern)(?:(\(InfixOperator.operators2))\(exp3Pattern))*"
+    private static let exp1Pattern = "\(exp2Pattern)(?:(\(InfixOperator.operators1))\(exp2Pattern))*"
     
-    private static func _parse3(_ string: String) throws -> Expression {
+    private static func _parse4(_ string: String) throws -> Expression {
         if try! Regex("^\(floatPattern)$").matches(string) {
             guard let value = Double(string) else {
                 throw ExpressionError.failedParsingValue
@@ -90,13 +97,33 @@ extension Expression {
             return try parse(match.groups[0]!)
         }
         
-        // _parse2から呼ぶ限りはありえない
+        // _parse3から呼ぶ限りはありえない
+        throw ExpressionError.unknown
+    }
+    
+    private static func _parse3(_ string: String) throws -> Expression {
+        let exp4i = exp4Pattern.ignoringExtractions()
+        let regex = try! Regex("^(\(exp4i))(?:(\(InfixOperator.operators3))(.+))?$")
+        guard let match = regex.firstMatch(string) else {
+            throw ExpressionError.unknown
+        }
+        let e1 = try _parse4(match.groups[0]!)
+        
+        guard let op = match.groups[1], let right = match.groups[2] else {
+            return e1
+        }
+        let e2 = try _parse3(right)
+        if let unwrappedOp = InfixOperator(rawValue: op) {
+            return Expression.statement(unwrappedOp, e1, e2)
+        }
+        
+        // 正規表現からありえない
         throw ExpressionError.unknown
     }
     
     private static func _parse2(_ string: String) throws -> Expression {
-        let exp1i = exp1Pattern.ignoringExtractions()
-        let regex = try! Regex("^(\(exp1i))(?:(\(InfixOperator.operators2))(.+))?$")
+        let exp3i = exp3Pattern.ignoringExtractions()
+        let regex = try! Regex("^(\(exp3i))(?:(\(InfixOperator.operators2))(.+))?$")
         guard let match = regex.firstMatch(string) else {
             throw ExpressionError.unknown
         }
@@ -141,7 +168,7 @@ class ViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         // 13
-        print(try! Expression.parse("(1+(1+2))*3+4-3").calculateResult())
+        print(try! Expression.parse("(1+(1+2)^2)*3+4-3").calculateResult())
     }
 }
 
