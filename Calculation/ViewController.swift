@@ -86,9 +86,24 @@ extension Expression {
     
     private static let _floatRegex = try! Regex("^\(floatPattern)$")
     private static let _blockRegex = try! Regex("^\(blockPattern)$")
+    private static let _regex3: Regex = {
+        let exp4i = exp4Pattern.ignoringExtractions()
+        return try! Regex("^(\(exp4i))(?:(\(InfixOperator.operators3))(.+))?$")
+    }()
+    
+    private static let _regex2: Regex = {
+        let exp3i = exp3Pattern.ignoringExtractions()
+        return try! Regex("^(\(exp3i))(?:(\(InfixOperator.operators2))(.+))?$")
+    }()
+    
+    private static let _regex: Regex = {
+        let exp2i = exp2Pattern.ignoringExtractions()
+        return try! Regex("^(\(exp2i))(?:(\(InfixOperator.operators1))(.+))?$")
+    }()
     
     
     private static func _parse4(_ string: String) throws -> Expression {
+        print(4, string)
         if _floatRegex.matches(string) {
             guard let value = Double(string) else {
                 throw ExpressionError.failedParsingValue
@@ -105,21 +120,6 @@ extension Expression {
         throw ExpressionError.unknown
     }
     
-    private static let _regex3: Regex = {
-        let exp4i = exp4Pattern.ignoringExtractions()
-        return try! Regex("^(\(exp4i))(?:(\(InfixOperator.operators3))(.+))?$")
-    }()
-    
-    private static let _regex2: Regex = {
-        let exp3i = exp3Pattern.ignoringExtractions()
-        return try! Regex("^(\(exp3i))(?:(\(InfixOperator.operators2))(.+))?$")
-    }()
-    
-    private static let _regex: Regex = {
-        let exp2i = exp2Pattern.ignoringExtractions()
-        return try! Regex("^(\(exp2i))(?:(\(InfixOperator.operators1))(.+))?$")
-    }()
-    
     private static func _parse3(_ string: String) throws -> Expression {
         guard let match = _regex3.firstMatch(string) else {
             throw ExpressionError.unknown
@@ -133,6 +133,8 @@ extension Expression {
         if let unwrappedOp = InfixOperator(rawValue: op) {
             return Expression.statement(unwrappedOp, e1, e2)
         }
+        
+        
         
         // 正規表現からありえない
         throw ExpressionError.unknown
@@ -181,7 +183,7 @@ class ViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         // 13
-        print(try! Expression.parse("-1+(1+(1+2)^2)*3+4-3").calculateResult())
+        print(try! Expression.parse("-1+(1+(1+2)^2)*3+4-3+(-1)").calculateResult())
     }
 }
 
